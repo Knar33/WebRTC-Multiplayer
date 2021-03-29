@@ -1,3 +1,4 @@
+//Source: https://github.com/lesmana/webrtc-without-signaling-server
 function chatlog(msg) {
   var words = msg.split(',');
   opponentPosition = new BABYLON.Vector3(words[0], words[1], words[2]);

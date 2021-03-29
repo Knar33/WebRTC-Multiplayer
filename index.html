@@ -13,6 +13,9 @@
 
 <body>
 
+To establish a connection, press "Create Offer" and send the text string that appears in the first box to the other client. They must paste the text into their first text box, press "Answer Offer", then copy and send back the new text string that appears in their second text box. Paste that into your second text box and press "confirm answer". The position of your pink boxes will now be synchronized directly through the magic of WebRTC without any server.
+<hr>
+
 <button id="buttoncreateoffer" onclick="clickcreateoffer()">Create offer</button>
 <textarea id="textoffer"></textarea>
 <button id="buttonofferpasted" onclick="clickofferpasted()">Answer offer</button>
@@ -22,13 +25,13 @@
 <hr>
 
 <canvas id="renderCanvas" touch-action="none" style="height: 100%; width: 100%;"></canvas>
-
 <script>
     opponentPosition = new BABYLON.Vector3(0, 0, 0);
     dataChannelInitiated = false;
     var canvas = document.getElementById('renderCanvas');
     var engine = new BABYLON.Engine(canvas, true, {preserveDrawingBuffer: true, stencil: true});
     var createScene = function(){
+        //Third person camera source: https://www.babylonjs-playground.com/#0D883E#128
         const keys = {
             jump: 0,
             fly: 0,
