@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="lz-string.min.js"></script>
+<script src="common.js"></script>
+<script src="https://cdn.babylonjs.com/babylon.js"></script>
+<script src="https://preview.babylonjs.com/materialsLibrary/babylon.gridMaterial.min.js"></script>
+<script src="https://cdn.babylonjs.com/cannon.js"></script>
+</head>
+
+<body>
+
+<button id="buttoncreateoffer" onclick="clickcreateoffer()">Create offer</button>
+<textarea id="textoffer"></textarea>
+<button id="buttonofferpasted" onclick="clickofferpasted()">Answer offer</button>
+<textarea id="textanswer"></textarea>
+<button id="buttonanswerpasted" onclick="clickanswerpasted()">Confirm Answer</button>
+
+<hr>
+
+<canvas id="renderCanvas" touch-action="none" style="height: 100%; width: 100%;"></canvas>
+
+<script>
+    opponentPosition = new BABYLON.Vector3(0, 0, 0);
+    dataChannelInitiated = false;
+    var canvas = document.getElementById('renderCanvas');
+    var engine = new BABYLON.Engine(canvas, true, {preserveDrawingBuffer: true, stencil: true});
+    var createScene = function(){
+        const keys = {
+            jump: 0,
+            fly: 0,
+            letft: 0,
+            right: 0,
+            forward: 0,
+            back: 0
+        }
+        const scene = new BABYLON.Scene(engine)
+
+        scene.enablePhysics(null, new BABYLON.CannonJSPlugin())
+
+        const camera = new BABYLON.ArcRotateCamera('arcCamera1', 0, 0, 10, BABYLON.Vector3.Zero(), scene)
+        camera.attachControl(canvas, false)
+        camera.setPosition(new BABYLON.Vector3(50, 100, 100))
+        camera.checkCollisions = true
+        camera.applyGravity = true
+
+        camera.lowerRadiusLimit = 2
+        camera.upperRadiusLimit = 20
+
+        camera.keysLeft = []
+        camera.keysRight = []
+        camera.keysUp = []
+        camera.keysDown = []
+
+        const player = BABYLON.Mesh.CreateBox('box', 1.0, scene)
+        player.checkCollisions = true
+        player.physicsImpostor = new BABYLON.PhysicsImpostor(player, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 1, friction: 100, restitution: 0.35 }, scene)
+
+        const Material = new BABYLON.StandardMaterial('material', scene)
+        Material.emissiveColor = new BABYLON.Color3(1, 0.2, 0.86)
+        player.material = Material
+        camera.setTarget(player)
+
+        opponent = BABYLON.Mesh.CreateBox('box', 1.0, scene)
+        opponent.material = Material
+
+        let speed = 0.05
+
+        player.update = function () {
+            var playerPos = player.position.x + "," + player.position.y + "," + player.position.z;
+            if (dataChannelInitiated === true) {
+                opponent.position = opponentPosition;
+                if (dataChannel.readyState === "open") {
+                    dataChannel.send(playerPos);
+                }
+            }
+            var cameraForwardRayPosition = camera.getForwardRay().direction
+            var cameraForwardRayPositionWithoutY = new BABYLON.Vector3(cameraForwardRayPosition.x, 0, cameraForwardRayPosition.z)
+
+            if (keys) {
+            if (keys.jump) {
+                player.physicsImpostor.applyImpulse(new BABYLON.Vector3(0, 0.5, 0), player.getAbsolutePosition())
+            }
+            if (keys.fly) {
+                player.physicsImpostor.applyImpulse(new BABYLON.Vector3(0, 0.17, 0), player.getAbsolutePosition())
+                scene.getPhysicsEngine().setGravity(new BABYLON.Vector3(0, 0.05, 0))
+                var v2 = BABYLON.Vector3.TransformCoordinates(new BABYLON.Vector3(0, 0.02, 0), BABYLON.Matrix.RotationY(player.rotation.y))
+                player.position.addInPlace(v2)
+            }
+            if (keys.left) {
+                player.locallyTranslate(new BABYLON.Vector3(-speed, 0, 0))
+            }
+            if (keys.right) {
+                player.locallyTranslate(new BABYLON.Vector3(speed, 0, 0))
+            }
+            if (keys.forward) {
+                player.lookAt(player.position.add(cameraForwardRayPositionWithoutY), 0, 0, 0)
+                player.position = player.position.add(new BABYLON.Vector3(cameraForwardRayPosition.x * speed, 0, cameraForwardRayPosition.z * speed))
+            }
+            if (keys.back) {
+                player.lookAt(player.position.add(cameraForwardRayPositionWithoutY), 0, 0, 0)
+                player.position = player.position.add(new BABYLON.Vector3(-cameraForwardRayPosition.x * speed, 0, -cameraForwardRayPosition.z * speed))
+            }
+            }
+        }
+
+        engine.runRenderLoop(() => {
+            if (player != null) {
+                player.update()
+            }
+        })
+
+        window.addEventListener('keydown', handleKeyDown, false)
+        window.addEventListener('keyup', handleKeyUp, false)
+
+        let action = 16
+        function handleKeyDown (evt) {
+            if (evt.keyCode == 32) keys.jump = 1 // space
+            if (evt.keyCode == 70) keys.fly = 1 // f
+            if (evt.keyCode == 65 || evt.key == 'ArrowLeft') keys.left = 1 // A
+            if (evt.keyCode == 68 || evt.key == 'ArrowRight') keys.right = 1 // D
+            if (evt.keyCode == 87 || evt.key == 'ArrowUp') keys.forward = 1 // W
+            if (evt.keyCode == 83 || evt.key == 'ArrowDown') keys.back = 1 // S
+            if (evt.keyCode == 16) speed = 0.2 // shift
+
+            if (action !== evt.keyCode) {
+                action = evt.keyCode
+            }
+        }
+        function handleKeyUp (evt) {
+            if (evt.keyCode == 32) keys.jump = 0
+            if (evt.keyCode == 70) keys.fly = 0
+            if (evt.keyCode == 65 || evt.key == 'ArrowLeft') keys.left = 0
+            if (evt.keyCode == 68 || evt.key == 'ArrowRight') keys.right = 0
+            if (evt.keyCode == 87 || evt.key == 'ArrowUp') keys.forward = 0
+            if (evt.keyCode == 83 || evt.key == 'ArrowDown') keys.back = 0
+            if (evt.keyCode == 16) speed = 0.05
+
+            action = evt.keyCode
+        }
+        var ground = BABYLON.MeshBuilder.CreateGround('ground', { width: 100, height: 100 })
+        ground.physicsImpostor = new BABYLON.PhysicsImpostor(ground, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0 }, scene)
+        ground.position.y = -2
+        ground.position.x = -28
+        ground.checkCollisions = true
+        var groundMaterial = new BABYLON.StandardMaterial('material', scene)
+        groundMaterial.emissiveColor = new BABYLON.Color3(0, .7, 0)
+        ground.material = groundMaterial
+
+        scene.clearColor = new BABYLON.Color3(0.5, 1, 1);
+
+        return scene
+    }
+
+    var scene = createScene();
+
+    engine.runRenderLoop(function(){
+        scene.render();
+    });
+
+    window.addEventListener('resize', function(){
+        engine.resize();
+    });
+</script>
+
+</body>
+</html>
